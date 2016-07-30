@@ -42,7 +42,7 @@ class SlotManager
 	/**
 	 * 随机选取一个什值
 	 */
-	public function getByRand()
+	public function getByRand($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByRand();
 
@@ -50,15 +50,15 @@ class SlotManager
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByRand();
+		if ($slot && $mark_used) {
+			$ok = $slot->getByRand($mark_used);
 		}
 
 		$this->_unlock($slot_id);
 
 		//当前slot最后一个正好取空,重试
 		if ($slot && $ok === null) {
-			return $this->getByRand();
+			return $this->getByRand($mark_used);
 		}
 
 		return $ok;
@@ -67,7 +67,7 @@ class SlotManager
 	/**
 	 * 得到可用的最小值
 	 */
-	public function getByMin()
+	public function getByMin($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByMin();
 
@@ -75,15 +75,15 @@ class SlotManager
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByMin();
+		if ($slot && $mark_used) {
+			$ok = $slot->getByMin($mark_used);
 		}
 
 		$this->_unlock($slot_id);
 
 		//当前slot最后一个正好取空,重试
 		if ($slot && $ok === null) {
-			return $this->getByMin();
+			return $this->getByMin($mark_used);
 		}
 
 		return $ok;
@@ -92,7 +92,7 @@ class SlotManager
 	/**
 	 * 得到可用的最大值
 	 */
-	public function getByMax()
+	public function getByMax($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByMax();
 
@@ -100,15 +100,15 @@ class SlotManager
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByMax();
+		if ($slot && $mark_used) {
+			$ok = $slot->getByMax($mark_used);
 		}
 
 		$this->_unlock($slot_id);
 
 		//当前slot最后一个正好取空,重试
 		if ($slot && $ok === null) {
-			return $this->getByMax();
+			return $this->getByMax($mark_used);
 		}
 
 		return $ok;
@@ -117,7 +117,7 @@ class SlotManager
 	/**
 	 * 检查指定的值是否可用
 	 */
-	public function checkPointOpen($number)
+	public function checkPoint($number)
 	{
 		$slot_id = intval($number / $this->_slot_size);
 		$slot_number = $number % $this->_slot_size;
@@ -125,7 +125,7 @@ class SlotManager
 		$this->_lock($slot_id);
 
 		$slot = $this->_getSlot($slot_id);
-		$ok = $slot->checkPointOpen($slot_number);
+		$ok = $slot->checkPoint($slot_number);
 
 		$this->_unlock($slot_id);
 
@@ -133,9 +133,9 @@ class SlotManager
 	}
 
 	/**
-	 * 设置指定的值为可用
+	 * 设置指定值的状态
 	 */
-	public function setPointOpen($number)
+	public function setPoint($number, $is_used)
 	{
 		$slot_id = intval($number / $this->_slot_size);
 		$slot_number = $number % $this->_slot_size;
@@ -145,7 +145,7 @@ class SlotManager
 		$slot = $this->_getSlot($slot_id);
 		$ok = 0;
 		if ($slot) {
-			$slot->setPointOpen($slot_number);
+			$slot->setPointOpen($slot_number, $is_used);
 			$ok = $this->_save();
 		}
 
@@ -155,31 +155,9 @@ class SlotManager
 	}
 
 	/**
-	 * 设定指定值为不可用
+	 * 设定连续的区域的状态
 	 */
-	public function setPointClose($number)
-	{
-		$slot_id = intval($number / $this->_slot_size);
-		$slot_number = $number % $this->_slot_size;
-
-		$this->_lock($slot_id);
-
-		$slot = $this->_getSlot($slot_id);
-		$ok = 0;
-		if ($slot) {
-			$slot->setPointClose($slot_number);
-			$ok = $this->_save();
-		}
-
-		$this->_unlock($slot_id);
-
-		return (bool)$ok;
-	}
-
-	/**
-	 * 设定连续的区域为可用
-	 */
-	public function setRangeOpen($start, $lenght)
+	public function setRange($start, $lenght, $is_used)
 	{
 		$ok = 0;
 
@@ -191,35 +169,7 @@ class SlotManager
 
 			$slot = $this->_getSlot($slot_id);
 			if ($slot) {
-				$slot->setRangeOpen($slot_number, $lenght);
-				$ok |= ~(bool)$this->_save();
-			}
-
-			$this->_unlock($slot_id);
-
-			$start += $this->_slot_size;
-			$lenght -= $this->_slot_size;
-		}
-
-		return (bool)$ok;
-	}
-
-	/**
-	 * 设定连续的区域为不可用
-	 */
-	public function setRangeClose($start, $lenght)
-	{
-		$ok = 0;
-
-		while ($lenght > 0) {
-			$slot_id = intval($start / $this->_slot_size);
-			$slot_number = $start % $this->_slot_size;
-
-			$this->_lock($slot_id);
-
-			$slot = $this->_getSlot($slot_id);
-			if ($slot) {
-				$slot->setRangeClose($slot_number, $lenght);
+				$slot->setRangeOpen($slot_number, $lenght, $is_used);
 				$ok |= ~(bool)$this->_save();
 			}
 
@@ -275,5 +225,15 @@ class SlotManager
 			$this->_slot_obj->isFull(),
 			$this->_slot_ver
 		);
+	}
+
+	private function _lock($slot_id)
+	{
+		$this->_persistent->lock($slot_id+1);
+	}
+
+	private function _unlock($slot_id)
+	{
+		$this->_persistent->unlock($slot_id+1);
 	}
 }

@@ -4,15 +4,22 @@ namespace bybzmt\NumberGenerator;
 /**
  * 保存到Mysql数据库中
  */
-class ToMysql
+class ToMysql implements Persistent
 {
+	public $_locker_key_prefix = 'bybzmt_number_generator:';
+
 	private $_pdo;
 	private $_table;
+	private $_locker;
 
-	public function __construct(\PDO $pdo, $table)
+	/**
+	 * $locker 要有lock($key), unlock($key) 两个方法
+	 */
+	public function __construct(\PDO $pdo, $table, $locker)
 	{
 		$this->_pdo = $pdo;
 		$this->_table = $table;
+		$this->_locker = $locker;
 	}
 
 	public function findIdByRand()
@@ -89,5 +96,21 @@ class ToMysql
 		}
 		$stmt->execute(array($data, $isfull));
 		return $this->_pdo->lastInsertId();
+	}
+
+	public function lock($id)
+	{
+		if ($this->_locker) {
+			$key = self::$_locker_key_prefix . $id;
+			$this->_locker->lock($id);
+		}
+	}
+
+	public function unlock($id)
+	{
+		if ($this->_locker) {
+			$key = self::$_locker_key_prefix . $id;
+			$this->_locker->unlock($id);
+		}
 	}
 }

@@ -15,7 +15,7 @@ namespace bybzmt\NumberGenerator;
  *     KEY (`isfull`)
  * ) ENGINE = InnoDB COMMENT='数字生成器';
  */
-interface Storage
+interface Persistent
 {
 	/**
 	 * 随机得到一个可用的id
@@ -55,4 +55,14 @@ interface Storage
 	 * @return 自增id
 	 */
 	public function add(&$data, $isfull);
+
+	/**
+	 * 加锁
+	 */
+	public function lock($id);
+
+	/**
+	 * 加锁
+	 */
+	public function unlock($id);
 }

@@ -6,7 +6,7 @@ namespace bybzmt\NumberGenerator;
  *
  * 算法思想来自内存MMU和硬盘空间管理的算法
  * 基础思想如下:
- * 1. 需要管理的是以基数N ^ 指数Y大小的空间
+ * 1. 需要管理的是以(基数N ^ 指数Y)大小的空间
  * 2. 将这个空间以N为分片，Y为维度
  * 3. 上一维度位置i如果标记成己用，则表示下一维度分片i*N整个为己用
  *
@@ -63,17 +63,9 @@ class SpaceManager
 	/**
 	 * 得到原始数据
 	 */
-	public function &getData($data)
+	public function &getData()
 	{
 		return $this->_data;
-	}
-
-	/**
-	 * 设置原始数据
-	 */
-	public function setData(&$data)
-	{
-		$this->_data = $data;
 	}
 
 	/**
@@ -92,7 +84,7 @@ class SpaceManager
 	 *
 	 * @param bool $close 是否关闭取到的那个值
 	 */
-	public function getByRand($close=true)
+	public function getByRand($mark_used=1)
 	{
 		if ($this->_data[0] == $this->_str_full) {
 			return null;
@@ -101,7 +93,7 @@ class SpaceManager
 		$poit = $this->_findRandNumber(1, 0);
 
 		//标记当前位置为己用
-		if ($poit!== null && $close) {
+		if ($poit!== null && $mark_used) {
 			$this->_setPoint($this->_dep, $poit, false);
 		}
 
@@ -113,7 +105,7 @@ class SpaceManager
 	 *
 	 * @param bool $close 是否关闭取到的那个值
 	 */
-	public function getByMin($close=true)
+	public function getByMin($mark_used=1)
 	{
 		if ($this->_data[0] == $this->_str_full) {
 			return null;
@@ -122,7 +114,7 @@ class SpaceManager
 		$poit = $this->_findMinNumber(1, 0);
 
 		//标记当前位置为己用
-		if ($poit!== null && $close) {
+		if ($poit!== null && $mark_used) {
 			$this->_setPoint($this->_dep, $poit, false);
 		}
 
@@ -134,7 +126,7 @@ class SpaceManager
 	 *
 	 * @param bool $close 是否关闭取到的那个值
 	 */
-	public function getByMax($close=true)
+	public function getByMax($mark_used=1)
 	{
 		if ($this->_data[0] == $this->_str_full) {
 			return null;
@@ -143,7 +135,7 @@ class SpaceManager
 		$poit = $this->_findMaxNumber(1, 0);
 
 		//标记当前位置为己用
-		if ($poit!== null && $close) {
+		if ($poit!== null && $mark_used) {
 			$this->_setPoint($this->_dep, $poit, false);
 		}
 
@@ -153,10 +145,10 @@ class SpaceManager
 	/**
 	 * 检查指定的值是否可用
 	 */
-	public function checkPointOpen($number)
+	public function checkPoint($number)
 	{
 		if ($this->_data[0] == $this->_str_full) {
-			return false;
+			return 1;
 		}
 
 		//最大长度
@@ -167,13 +159,13 @@ class SpaceManager
 			$number = 0;
 		}
 
-		return $this->_checkPointOpen($this->_dep, $number);
+		return $this->_checkPoint($this->_dep, $number);
 	}
 
 	/**
 	 * 设置指定的值为可用
 	 */
-	public function setPointOpen($number)
+	public function setPoint($number, $is_used)
 	{
 		//最大长度
 		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
@@ -183,29 +175,13 @@ class SpaceManager
 			$number = 0;
 		}
 
-		$this->_setPoint($this->_dep, $number, true);
+		$this->_setPoint($this->_dep, $number, $is_used);
 	}
 
 	/**
-	 * 设定指定值为不可用
+	 * 设定连续的区域的状态
 	 */
-	public function setPointClose($number)
-	{
-		//最大长度
-		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
-
-		//修正开始偏移
-		if ($number < 0 || $number >= $max_lenght) {
-			$number = 0;
-		}
-
-		$this->_setPoint($this->_dep, $number, false);
-	}
-
-	/**
-	 * 设定连续的区域为可用
-	 */
-	public function setRangeOpen($start, $lenght)
+	public function setRange($start, $lenght, $is_used)
 	{
 		//最大长度
 		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
@@ -220,28 +196,7 @@ class SpaceManager
 			$lenght -= $start + $lenght - $max_lenght;
 		}
 
-		$this->_setRange($this->_dep, $start, $lenght, true);
-	}
-
-	/**
-	 * 设定连续的区域为不可用
-	 */
-	public function setRangeClose($start, $lenght)
-	{
-		//最大长度
-		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
-
-		//修正开始偏移
-		if ($start < 0 || $start >= $max_lenght) {
-			$start = 0;
-		}
-
-		//修正lenght让它不过界
-		if ($start + $lenght > $max_lenght) {
-			$lenght -= $start + $lenght - $max_lenght;
-		}
-
-		$this->_setRange($this->_dep, $start, $lenght, false);
+		$this->_setRange($this->_dep, $start, $lenght, $is_used);
 	}
 
 	/*
@@ -390,7 +345,7 @@ class SpaceManager
 	/*
 	 * 检查某个点是否可用
 	 */
-	private function _checkPointOpen($dimension, $number)
+	private function _checkPoint($dimension, $number)
 	{
 		//层次维持用数据占用的空间
 		$dimension_size = $this->_dimension_size[$dimension];
@@ -400,7 +355,7 @@ class SpaceManager
 		$char = unpack('C', $this->_data[$str_offset])[1];
 
 		$check = 1 << $char_offset;
-		return $check & $char ? false : true;
+		return $check & $char ? 1 : 0;
 	}
 
 	/*
@@ -408,11 +363,11 @@ class SpaceManager
 	 *
 	 * @return 是否关闭成功　[0己是关闭的] [1关闭成功] [2关闭成功,空间全满]
 	 */
-	private function _setPoint($dimension, $number, $is_open)
+	private function _setPoint($dimension, $number, $is_used)
 	{
 		//第0层特殊处理
 		if ($dimension < 1) {
-			$this->_data[0] = $is_open ? "\0" : $this->_str_full;
+			$this->_data[0] = $is_used ? "\0" : $this->_str_full;
 			return;
 		}
 
@@ -422,7 +377,7 @@ class SpaceManager
 		$str_offset = intval(($number + $dimension_size) / 8);
 		$char_offset = ($number + $dimension_size) % 8;
 		$char = unpack('C', $this->_data[$str_offset])[1];
-		if ($is_open) {
+		if ($is_used) {
 			$new_char = $char & (~(1 << $char_offset));
 		} else {
 			$new_char = $char | (1 << $char_offset);
@@ -434,11 +389,11 @@ class SpaceManager
 
 		$this->_data[$str_offset] = pack('C', $new_char);
 
-		if ($is_open) {
-			$this->_secition_fixup($dimension, $number, $is_open);
+		if ($is_used) {
+			$this->_secition_fixup($dimension, $number, $is_used);
 		} else {
 			if ($new_char == 255) {
-				$this->_secition_fixup($dimension, $number, $is_open);
+				$this->_secition_fixup($dimension, $number, $is_used);
 			}
 		}
 	}
@@ -446,7 +401,7 @@ class SpaceManager
 	/*
 	 * 设置连续区域状态
 	 */
-	private function _setRange($dimension, $start, $lenght, $is_open)
+	private function _setRange($dimension, $start, $lenght, $is_used)
 	{
 		$start_pos = $start % $this->_base;
 		if ($start_pos == 0) {
@@ -460,21 +415,21 @@ class SpaceManager
 		$next_lenght = intval($lenght_fix / $this->_base);
 		if ($next_lenght > 0) {
 			$next_start = intval($start_fix / $this->_base);
-			$this->_setRange($dimension-1, $next_start, $next_lenght, $is_open);
+			$this->_setRange($dimension-1, $next_start, $next_lenght, $is_used);
 		}
 
-		$this->_setRangeByChar($dimension, $start, $lenght, $is_open);
+		$this->_setRangeByChar($dimension, $start, $lenght, $is_used);
 
 		//检查开头和未尾边界是否有分片全满
 		$stop = $start + $lenght;
-		$this->_secition_fixup($dimension, $start, $is_open, true);
-		$this->_secition_fixup($dimension, $stop-1, $is_open, true);
+		$this->_secition_fixup($dimension, $start, $is_used, true);
+		$this->_secition_fixup($dimension, $stop-1, $is_used, true);
 	}
 
 	/*
 	 * 数据结构(分片性质)维护
 	 */
-	private function _secition_fixup($dimension, $number, $is_open, $req_check=false)
+	private function _secition_fixup($dimension, $number, $is_used, $req_check=false)
 	{
 		$dimension_size = $this->_dimension_size[$dimension];
 
@@ -485,7 +440,7 @@ class SpaceManager
 		$str_offset = intval(($offset + $dimension_size) / 8);
 
 		//关闭时或强制检查标记打开
-		if (!$is_open || $req_check) {
+		if (!$is_used || $req_check) {
 			for ($i=0; $i<$this->_str_base; $i++) {
 				if ($this->_data[$str_offset + $i] != $this->_str_full) {
 					//只要有一个不满则不满
@@ -495,13 +450,13 @@ class SpaceManager
 		}
 
 		$prev_number = intval($offset / $this->_base);
-		$this->_setPoint($dimension-1, $prev_number, $is_open);
+		$this->_setPoint($dimension-1, $prev_number, $is_used);
 	}
 
 	/*
 	 * 设置指定维度的指定区域状态
 	 */
-	private function _setRangeByChar($dimension, $start, $lenght, $is_open)
+	private function _setRangeByChar($dimension, $start, $lenght, $is_used)
 	{
 		$dimension_size = $this->_dimension_size[$dimension];
 
@@ -513,7 +468,7 @@ class SpaceManager
 			$char = unpack('C', $this->_data[$str_pos])[1];
 
 			for ($i=$pos; $i<8 && $lenght > 0; $i++, $lenght--) {
-				if ($is_open) {
+				if ($is_used) {
 					$char &= ~(1 << $i);
 				} else {
 					$char |= 1 << $i;
@@ -524,7 +479,7 @@ class SpaceManager
 			$str_pos++;
 		}
 
-		$set_char = $is_open ? "\0" : $this->_str_full;
+		$set_char = $is_used ? "\0" : $this->_str_full;
 
 		//中间的整字节部分
 		$str_len = (int)($lenght / 8);
@@ -537,7 +492,7 @@ class SpaceManager
 		//未尾的非整字节偏移
 		$char = unpack('C', $this->_data[$str_pos])[1];
 		for ($i=0; $i<8 && $lenght > 0; $i++, $lenght--) {
-			if ($is_open) {
+			if ($is_used) {
 				$char &= ~(1 << $i);
 			} else {
 				$char |= 1 << $i;
