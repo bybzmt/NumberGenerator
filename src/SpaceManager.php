@@ -2,8 +2,7 @@
 namespace bybzmt\NumberGenerator;
 
 /**
- * 数字生成器
- * 用于生成指范围内不重复的数字
+ * 空间管理器
  *
  * 算法思想来自内存MMU和硬盘空间管理的算法
  * 基础思想如下:
@@ -11,9 +10,9 @@ namespace bybzmt\NumberGenerator;
  * 2. 将这个空间以N为分片，Y为维度
  * 3. 上一维度位置i如果标记成己用，则表示下一维度分片i*N整个为己用
  *
- * 特别说明:为了方便第1个字节用于标记整个空间是否全满
+ * 特别说明:为了方便第1个字节用于标记整个空间是否全己用
  */
-class NumberGenerator
+class SpaceManager
 {
 	/*
 	 * 空间基数
@@ -160,6 +159,14 @@ class NumberGenerator
 			return false;
 		}
 
+		//最大长度
+		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
+
+		//修正开始偏移
+		if ($number < 0 || $number >= $max_lenght) {
+			$number = 0;
+		}
+
 		return $this->_checkPointOpen($this->_dep, $number);
 	}
 
@@ -168,6 +175,14 @@ class NumberGenerator
 	 */
 	public function setPointOpen($number)
 	{
+		//最大长度
+		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
+
+		//修正开始偏移
+		if ($number < 0 || $number >= $max_lenght) {
+			$number = 0;
+		}
+
 		$this->_setPoint($this->_dep, $number, true);
 	}
 
@@ -176,6 +191,14 @@ class NumberGenerator
 	 */
 	public function setPointClose($number)
 	{
+		//最大长度
+		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
+
+		//修正开始偏移
+		if ($number < 0 || $number >= $max_lenght) {
+			$number = 0;
+		}
+
 		$this->_setPoint($this->_dep, $number, false);
 	}
 
@@ -184,6 +207,19 @@ class NumberGenerator
 	 */
 	public function setRangeOpen($start, $lenght)
 	{
+		//最大长度
+		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
+
+		//修正开始偏移
+		if ($start < 0 || $start >= $max_lenght) {
+			$start = 0;
+		}
+
+		//修正lenght让它不过界
+		if ($start + $lenght > $max_lenght) {
+			$lenght -= $start + $lenght - $max_lenght;
+		}
+
 		$this->_setRange($this->_dep, $start, $lenght, true);
 	}
 
@@ -192,6 +228,19 @@ class NumberGenerator
 	 */
 	public function setRangeClose($start, $lenght)
 	{
+		//最大长度
+		$max_lenght = $this->_dimension_size[$this->_dep+1] - $this->_dimension_size[$this->_dep];
+
+		//修正开始偏移
+		if ($start < 0 || $start >= $max_lenght) {
+			$start = 0;
+		}
+
+		//修正lenght让它不过界
+		if ($start + $lenght > $max_lenght) {
+			$lenght -= $start + $lenght - $max_lenght;
+		}
+
 		$this->_setRange($this->_dep, $start, $lenght, false);
 	}
 
