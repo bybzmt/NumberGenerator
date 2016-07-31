@@ -74,9 +74,9 @@ class SpaceManager
 	public function isFull()
 	{
 		if ($this->_data[0] == $this->_str_full) {
-			return true;
+			return 1;
 		}
-		return false;
+		return 0;
 	}
 
 	/**

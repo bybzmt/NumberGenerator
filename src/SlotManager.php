@@ -45,12 +45,17 @@ class SlotManager
 	public function getByRand($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByRand();
+		if ($slot_id === false) {
+			return null;
+		}
+
+		$slot_id--;
 
 		$this->_lock($slot_id);
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot && $mark_used) {
+		if ($slot) {
 			$ok = $slot->getByRand($mark_used);
 		}
 
@@ -70,12 +75,17 @@ class SlotManager
 	public function getByMin($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByMin();
+		if ($slot_id === false) {
+			return null;
+		}
+
+		$slot_id--;
 
 		$this->_lock($slot_id);
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot && $mark_used) {
+		if ($slot) {
 			$ok = $slot->getByMin($mark_used);
 		}
 
@@ -95,12 +105,17 @@ class SlotManager
 	public function getByMax($mark_used=1)
 	{
 		$slot_id = $this->_persistent->findIdByMax();
+		if ($slot_id === false) {
+			return null;
+		}
+
+		$slot_id--;
 
 		$this->_lock($slot_id);
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot && $mark_used) {
+		if ($slot) {
 			$ok = $slot->getByMax($mark_used);
 		}
 
@@ -124,8 +139,11 @@ class SlotManager
 
 		$this->_lock($slot_id);
 
+		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		$ok = $slot->checkPoint($slot_number);
+		if ($slot) {
+			$ok = $slot->checkPoint($slot_number);
+		}
 
 		$this->_unlock($slot_id);
 
@@ -145,8 +163,8 @@ class SlotManager
 		$slot = $this->_getSlot($slot_id);
 		$ok = 0;
 		if ($slot) {
-			$slot->setPointOpen($slot_number, $is_used);
-			$ok = $this->_save();
+			$slot->setPoint($slot_number, $is_used);
+			$ok = $this->_saveSlot();
 		}
 
 		$this->_unlock($slot_id);
@@ -169,8 +187,8 @@ class SlotManager
 
 			$slot = $this->_getSlot($slot_id);
 			if ($slot) {
-				$slot->setRangeOpen($slot_number, $lenght, $is_used);
-				$ok |= ~(bool)$this->_save();
+				$slot->setRange($slot_number, $lenght, $is_used);
+				$ok |= ~(int)(bool)$this->_saveSlot();
 			}
 
 			$this->_unlock($slot_id);
@@ -187,10 +205,26 @@ class SlotManager
 	 */
 	public function inrcSlot($num=1)
 	{
+		$ids = array();
+
 		while ($num-- > 0) {
 			$slot = new SpaceManager($this->_base, $this->_dep);
-			$this->_persistent->add($slot->getData(), $slot->isFull());
+			$ids[] = $this->_persistent->add($slot->getData(), $slot->isFull());
 		}
+
+		return $ids;
+	}
+
+	/**
+	 * 强制取到一个Slot数据，没有时自动初始
+	 */
+	public function getSlot($slot_id, $auto_init=true)
+	{
+		$slot = $this->_getSlot($slot_id);
+		if ($auto_init) {
+			$slot = new SpaceManager($this->_base, $this->_dep);
+		}
+		return $slot;
 	}
 
 	/**

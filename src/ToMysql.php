@@ -6,16 +6,20 @@ namespace bybzmt\NumberGenerator;
  */
 class ToMysql implements Persistent
 {
+	/**
+	 * 锁Key前缀
+	 */
 	public $_locker_key_prefix = 'bybzmt_number_generator:';
 
 	private $_pdo;
 	private $_table;
 	private $_locker;
+	private $_lock;
 
 	/**
-	 * $locker 要有lock($key), unlock($key) 两个方法
+	 * $locker是一个回调函数func($key)返回一个有lock(),unlock()两个方法的锁实例
 	 */
-	public function __construct(\PDO $pdo, $table, $locker)
+	public function __construct(\PDO $pdo, $table, callable $locker=null)
 	{
 		$this->_pdo = $pdo;
 		$this->_table = $table;
@@ -29,7 +33,6 @@ class ToMysql implements Persistent
 		if (!$stmt) {
 			throw new Exception("db err:".var_export($this->_pdo->errorInfo(), true));
 		}
-		$stmt->execute(array($id));
 		return $stmt->fetchColumn();
 	}
 
@@ -40,7 +43,6 @@ class ToMysql implements Persistent
 		if (!$stmt) {
 			throw new Exception("db err:".var_export($this->_pdo->errorInfo(), true));
 		}
-		$stmt->execute(array($id));
 		return $stmt->fetchColumn();
 	}
 
@@ -51,11 +53,10 @@ class ToMysql implements Persistent
 		if (!$stmt) {
 			throw new Exception("db err:".var_export($this->_pdo->errorInfo(), true));
 		}
-		$stmt->execute(array($id));
 		return $stmt->fetchColumn();
 	}
 
-	public function &get($id)
+	public function get($id)
 	{
 		$sql = "SELECT data, ver FROM `{$this->_table}` WHERE id = ?";
 		$stmt = $this->_pdo->prepare($sql);
@@ -94,7 +95,7 @@ class ToMysql implements Persistent
 		if (!$stmt) {
 			throw new Exception("db err:".var_export($this->_pdo->errorInfo(), true));
 		}
-		$stmt->execute(array($data, $isfull));
+		$ok = $stmt->execute(array($data, $isfull));
 		return $this->_pdo->lastInsertId();
 	}
 
@@ -102,15 +103,16 @@ class ToMysql implements Persistent
 	{
 		if ($this->_locker) {
 			$key = self::$_locker_key_prefix . $id;
-			$this->_locker->lock($id);
+
+			$this->_lock[$id] = $this->_locker($key);
+			$this->_lock[$id]->lock();
 		}
 	}
 
 	public function unlock($id)
 	{
-		if ($this->_locker) {
-			$key = self::$_locker_key_prefix . $id;
-			$this->_locker->unlock($id);
+		if (isset($this->_lock[$id])) {
+			$this->_lock[$id]->unlock();
 		}
 	}
 }

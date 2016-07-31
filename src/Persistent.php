@@ -62,7 +62,7 @@ interface Persistent
 	public function lock($id);
 
 	/**
-	 * 加锁
+	 * 解锁
 	 */
 	public function unlock($id);
 }
