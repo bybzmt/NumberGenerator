@@ -458,7 +458,7 @@ class SpaceManager
 		$dimension_size = $this->_dimension_size[$dimension];
 
 		$str_pos = (int)(($dimension_size + $start) / 8);
-		$pos = $start % 8;
+		$pos = ($dimension_size + $start) % 8;
 
 		//开头的非整字节偏移
 		if ($pos > 0) {
@@ -486,7 +486,7 @@ class SpaceManager
 			$lenght-=8;
 		}
 
-		if ($lenght > 0) {
+		if ($lenght < 1) {
 			return;
 		}
 

@@ -120,10 +120,11 @@ class SlotManagerTest extends PHPUnit_Framework_TestCase
 
 		//最小应该是上面的number
 		$po = $obj->getByMin(false);
-		//最大应该是上面的number
-		$po = $obj->getByMax(false);
+		$this->assertTrue($po == $number);
 
-		$this->assertTrue(true);
+		//最大应该是上面的number
+		$po = $obj->getByMax();
+		$this->assertTrue($po == $number);
 	}
 }
 

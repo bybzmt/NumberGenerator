@@ -195,19 +195,23 @@ class SlotManager
 		while ($lenght > 0) {
 			$slot_id = intval($start / $this->_slot_size);
 			$slot_number = $start % $this->_slot_size;
+			$slot_lenght = $this->_slot_size - $slot_number;
+			if ($slot_lenght > $lenght) {
+				$slot_lenght = $lenght;
+			}
 
 			$this->lock($slot_id);
 
 			$slot = $this->_getSlot($slot_id);
 			if ($slot) {
-				$slot->setRange($slot_number, $lenght, $is_used);
+				$slot->setRange($slot_number, $slot_lenght, $is_used);
 				$ok |= ~(int)(bool)$this->_saveSlot();
 			}
 
 			$this->unlock($slot_id);
 
-			$start += $this->_slot_size;
-			$lenght -= $this->_slot_size;
+			$start += $slot_lenght;
+			$lenght -= $slot_lenght;
 		}
 
 		return (bool)$ok;
