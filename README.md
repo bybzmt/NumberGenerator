@@ -17,6 +17,6 @@ composer安装:
 
 /example 目录里有用法示例
 
-![算法示例](https://github.com/bybzmt/NumberGenerator/raw/example/principle.png)
+![算法示例](https://raw.githubusercontent.com/bybzmt/NumberGenerator/master/example/principle.png)
 
 如上图a0表示b0-b2是否己用b0表示c0-c2是否己用，类推
