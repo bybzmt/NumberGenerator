@@ -16,6 +16,9 @@
  *
  * 做初史化时需要计算一下自己需要生成的数字个数N，然后添加
  * 大于等于 N / (base ^ dep) 个slot位置, 最后关闭不需要的
+ *
+ * 需要注意的是如果slot_id对应的记录在数据库中不存在会被当作slot己满处理
+ * 另外slot_id比数据库id小1
  */
 
 namespace bybzmt\NumberGenerator;

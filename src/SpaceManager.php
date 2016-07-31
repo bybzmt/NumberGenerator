@@ -94,7 +94,7 @@ class SpaceManager
 
 		//标记当前位置为己用
 		if ($poit!== null && $mark_used) {
-			$this->_setPoint($this->_dep, $poit, false);
+			$this->_setPoint($this->_dep, $poit, 1);
 		}
 
 		return $poit;
@@ -115,7 +115,7 @@ class SpaceManager
 
 		//标记当前位置为己用
 		if ($poit!== null && $mark_used) {
-			$this->_setPoint($this->_dep, $poit, false);
+			$this->_setPoint($this->_dep, $poit, 1);
 		}
 
 		return $poit;
@@ -136,7 +136,7 @@ class SpaceManager
 
 		//标记当前位置为己用
 		if ($poit!== null && $mark_used) {
-			$this->_setPoint($this->_dep, $poit, false);
+			$this->_setPoint($this->_dep, $poit, 1);
 		}
 
 		return $poit;
@@ -192,7 +192,7 @@ class SpaceManager
 		}
 
 		//修正lenght让它不过界
-		if ($start + $lenght > $max_lenght) {
+		if ($start + $lenght >= $max_lenght) {
 			$lenght -= $start + $lenght - $max_lenght;
 		}
 
@@ -360,14 +360,12 @@ class SpaceManager
 
 	/*
 	 * 标记一个位置为己占用
-	 *
-	 * @return 是否关闭成功　[0己是关闭的] [1关闭成功] [2关闭成功,空间全满]
 	 */
 	private function _setPoint($dimension, $number, $is_used)
 	{
 		//第0层特殊处理
 		if ($dimension < 1) {
-			$this->_data[0] = $is_used ? "\0" : $this->_str_full;
+			$this->_data[0] = $is_used ? $this->_str_full : "\0";
 			return;
 		}
 
@@ -378,9 +376,9 @@ class SpaceManager
 		$char_offset = ($number + $dimension_size) % 8;
 		$char = unpack('C', $this->_data[$str_offset])[1];
 		if ($is_used) {
-			$new_char = $char & (~(1 << $char_offset));
-		} else {
 			$new_char = $char | (1 << $char_offset);
+		} else {
+			$new_char = $char & (~(1 << $char_offset));
 		}
 
 		if ($char == $new_char) {
@@ -390,11 +388,11 @@ class SpaceManager
 		$this->_data[$str_offset] = pack('C', $new_char);
 
 		if ($is_used) {
-			$this->_secition_fixup($dimension, $number, $is_used);
-		} else {
 			if ($new_char == 255) {
 				$this->_secition_fixup($dimension, $number, $is_used);
 			}
+		} else {
+			$this->_secition_fixup($dimension, $number, $is_used);
 		}
 	}
 
@@ -422,14 +420,14 @@ class SpaceManager
 
 		//检查开头和未尾边界是否有分片全满
 		$stop = $start + $lenght;
-		$this->_secition_fixup($dimension, $start, $is_used, true);
-		$this->_secition_fixup($dimension, $stop-1, $is_used, true);
+		$this->_secition_fixup($dimension, $start, $is_used);
+		$this->_secition_fixup($dimension, $stop-1, $is_used);
 	}
 
 	/*
 	 * 数据结构(分片性质)维护
 	 */
-	private function _secition_fixup($dimension, $number, $is_used, $req_check=false)
+	private function _secition_fixup($dimension, $number, $is_used)
 	{
 		$dimension_size = $this->_dimension_size[$dimension];
 
@@ -439,8 +437,7 @@ class SpaceManager
 		//在整个字符中的偏移
 		$str_offset = intval(($offset + $dimension_size) / 8);
 
-		//关闭时或强制检查标记打开
-		if (!$is_used || $req_check) {
+		if ($is_used) {
 			for ($i=0; $i<$this->_str_base; $i++) {
 				if ($this->_data[$str_offset + $i] != $this->_str_full) {
 					//只要有一个不满则不满
@@ -469,9 +466,9 @@ class SpaceManager
 
 			for ($i=$pos; $i<8 && $lenght > 0; $i++, $lenght--) {
 				if ($is_used) {
-					$char &= ~(1 << $i);
-				} else {
 					$char |= 1 << $i;
+				} else {
+					$char &= ~(1 << $i);
 				}
 			}
 
@@ -479,7 +476,7 @@ class SpaceManager
 			$str_pos++;
 		}
 
-		$set_char = $is_used ? "\0" : $this->_str_full;
+		$set_char = $is_used ? $this->_str_full : "\0";
 
 		//中间的整字节部分
 		$str_len = (int)($lenght / 8);
@@ -489,13 +486,17 @@ class SpaceManager
 			$lenght-=8;
 		}
 
+		if ($lenght > 0) {
+			return;
+		}
+
 		//未尾的非整字节偏移
 		$char = unpack('C', $this->_data[$str_pos])[1];
 		for ($i=0; $i<8 && $lenght > 0; $i++, $lenght--) {
 			if ($is_used) {
-				$char &= ~(1 << $i);
-			} else {
 				$char |= 1 << $i;
+			} else {
+				$char &= ~(1 << $i);
 			}
 		}
 		$this->_data[$str_pos] = pack('C', $char);

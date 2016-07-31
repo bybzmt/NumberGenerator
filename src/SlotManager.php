@@ -51,19 +51,23 @@ class SlotManager
 
 		$slot_id--;
 
-		$this->_lock($slot_id);
+		$this->lock($slot_id);
 
-		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByRand($mark_used);
+		if (!$slot) {
+			$this->unlock($slot_id);
+			return null;
 		}
 
-		$this->_unlock($slot_id);
+		$ok = $slot->getByRand($mark_used);
+		if ($mark_used) {
+			$this->_saveSlot();
+		}
 
-		//当前slot最后一个正好取空,重试
-		if ($slot && $ok === null) {
-			return $this->getByRand($mark_used);
+		$this->unlock($slot_id);
+
+		if ($ok !== null) {
+			$ok += $slot_id * $this->_slot_size;
 		}
 
 		return $ok;
@@ -81,19 +85,23 @@ class SlotManager
 
 		$slot_id--;
 
-		$this->_lock($slot_id);
+		$this->lock($slot_id);
 
-		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByMin($mark_used);
+		if (!$slot) {
+			$this->unlock($slot_id);
+			return null;
 		}
 
-		$this->_unlock($slot_id);
+		$ok = $slot->getByMin($mark_used);
+		if ($mark_used) {
+			$this->_saveSlot();
+		}
 
-		//当前slot最后一个正好取空,重试
-		if ($slot && $ok === null) {
-			return $this->getByMin($mark_used);
+		$this->unlock($slot_id);
+
+		if ($ok !== null) {
+			$ok += $slot_id * $this->_slot_size;
 		}
 
 		return $ok;
@@ -111,19 +119,24 @@ class SlotManager
 
 		$slot_id--;
 
-		$this->_lock($slot_id);
+		$this->lock($slot_id);
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
-		if ($slot) {
-			$ok = $slot->getByMax($mark_used);
+		if (!$slot) {
+			$this->unlock($slot_id);
+			return null;
 		}
 
-		$this->_unlock($slot_id);
+		$ok = $slot->getByMax($mark_used);
+		if ($mark_used) {
+			$this->_saveSlot();
+		}
 
-		//当前slot最后一个正好取空,重试
-		if ($slot && $ok === null) {
-			return $this->getByMax($mark_used);
+		$this->unlock($slot_id);
+
+		if ($ok !== null) {
+			$ok += $slot_id * $this->_slot_size;
 		}
 
 		return $ok;
@@ -137,7 +150,7 @@ class SlotManager
 		$slot_id = intval($number / $this->_slot_size);
 		$slot_number = $number % $this->_slot_size;
 
-		$this->_lock($slot_id);
+		$this->lock($slot_id);
 
 		$ok = null;
 		$slot = $this->_getSlot($slot_id);
@@ -145,7 +158,7 @@ class SlotManager
 			$ok = $slot->checkPoint($slot_number);
 		}
 
-		$this->_unlock($slot_id);
+		$this->unlock($slot_id);
 
 		return $ok;
 	}
@@ -158,7 +171,7 @@ class SlotManager
 		$slot_id = intval($number / $this->_slot_size);
 		$slot_number = $number % $this->_slot_size;
 
-		$this->_lock($slot_id);
+		$this->lock($slot_id);
 
 		$slot = $this->_getSlot($slot_id);
 		$ok = 0;
@@ -167,7 +180,7 @@ class SlotManager
 			$ok = $this->_saveSlot();
 		}
 
-		$this->_unlock($slot_id);
+		$this->unlock($slot_id);
 
 		return (bool)$ok;
 	}
@@ -183,7 +196,7 @@ class SlotManager
 			$slot_id = intval($start / $this->_slot_size);
 			$slot_number = $start % $this->_slot_size;
 
-			$this->_lock($slot_id);
+			$this->lock($slot_id);
 
 			$slot = $this->_getSlot($slot_id);
 			if ($slot) {
@@ -191,7 +204,7 @@ class SlotManager
 				$ok |= ~(int)(bool)$this->_saveSlot();
 			}
 
-			$this->_unlock($slot_id);
+			$this->unlock($slot_id);
 
 			$start += $this->_slot_size;
 			$lenght -= $this->_slot_size;
@@ -224,7 +237,8 @@ class SlotManager
 		if ($auto_init) {
 			$slot = new SpaceManager($this->_base, $this->_dep);
 		}
-		return $slot;
+
+		return new SlotWrapper($slot_id, $this->_slot_size, $slot);
 	}
 
 	/**
@@ -244,7 +258,7 @@ class SlotManager
 
 		$slot = new SpaceManager($this->_base, $this->_dep, $data);
 
-		$this->_slot_id = $slot_id + 1;
+		$this->_slot_id = $slot_id;
 		$this->_slot_obj = $slot;
 		$this->_slot_ver = $ver;
 
@@ -254,20 +268,20 @@ class SlotManager
 	private function _saveSlot()
 	{
 		return $this->_persistent->update(
-			$this->_slot_id,
+			$this->_slot_id+1,
 			$this->_slot_obj->getData(),
 			$this->_slot_obj->isFull(),
 			$this->_slot_ver
 		);
 	}
 
-	private function _lock($slot_id)
+	public function lock($slot_id)
 	{
-		$this->_persistent->lock($slot_id+1);
+		$this->_persistent->lock($slot_id);
 	}
 
-	private function _unlock($slot_id)
+	public function unlock($slot_id)
 	{
-		$this->_persistent->unlock($slot_id+1);
+		$this->_persistent->unlock($slot_id);
 	}
 }
