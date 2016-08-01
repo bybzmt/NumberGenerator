@@ -1,19 +1,8 @@
 <?php
 namespace bybzmt\NumberGenerator;
 
-
 /**
- * 保存到数据库中
- *
- * 表格构:
- * CREATE TABLE `test`.`number_generator` (
- *     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT ,
- *     `data` LONGBLOB NOT NULL ,
- *     `isfull` TINYINT UNSIGNED NOT NULL ,
- *     `ver` INT UNSIGNED NOT NULL ,
- *     PRIMARY KEY (`id`),
- *     KEY (`isfull`)
- * ) ENGINE = InnoDB COMMENT='数字生成器';
+ * 持久化接口
  */
 interface Persistent
 {

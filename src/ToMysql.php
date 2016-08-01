@@ -3,13 +3,23 @@ namespace bybzmt\NumberGenerator;
 
 /**
  * 保存到Mysql数据库中
+ *
+ * 表格构:
+ * CREATE TABLE `number_generator` (
+ *     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT ,
+ *     `data` LONGBLOB NOT NULL ,
+ *     `isfull` TINYINT UNSIGNED NOT NULL ,
+ *     `ver` INT UNSIGNED NOT NULL ,
+ *     PRIMARY KEY (`id`),
+ *     KEY (`isfull`)
+ * ) ENGINE = InnoDB COMMENT='数字生成器';
  */
 class ToMysql implements Persistent
 {
 	/**
 	 * 锁Key前缀
 	 */
-	public $_locker_key_prefix = 'bybzmt_number_generator:';
+	static public $_locker_key_prefix = 'bybzmt_number_generator:';
 
 	private $_pdo;
 	private $_table;
@@ -104,7 +114,7 @@ class ToMysql implements Persistent
 		if ($this->_locker) {
 			$key = self::$_locker_key_prefix . $id;
 
-			$this->_lock[$id] = $this->_locker($key);
+			$this->_lock[$id] = call_user_func($this->_locker, $key);
 			$this->_lock[$id]->lock();
 		}
 	}
